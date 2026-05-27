@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import notesModel from "../models/notes.model.js";
+import ApiResponse from "../utils/apiResponse.js";
 
 export const createNote = async (req: Request, res: Response) => {
   const { title, description } = req.body;
@@ -31,10 +32,11 @@ export const createNote = async (req: Request, res: Response) => {
   try {
     const newNote = await notesModel.create({ title, description });
 
-    return res.status(201).json({
-      message: "Note created successfully",
-      note: newNote,
-    });
+    return res.status(201).json(
+      new ApiResponse("Note created successfully", {
+        newNote,
+      }),
+    );
   } catch (error) {
     console.log("error creating note", error);
 
@@ -48,10 +50,9 @@ export const getAllNotes = async (req: Request, res: Response) => {
   try {
     const allNotes = await notesModel.find();
 
-    return res.status(200).json({
-      message: "Notes fetched successfully",
-      notes: allNotes,
-    });
+    return res
+      .status(200)
+      .json(new ApiResponse("Notes fetched successfully", allNotes));
   } catch (error) {
     console.log("error fetching notes", error);
     return res.status(500).json({
@@ -87,10 +88,9 @@ export const updateNote = async (req: Request, res: Response) => {
     note.description = description;
     note.save();
 
-    return res.status(200).json({
-      message: "Note updated successfully",
-      note: note,
-    });
+    return res
+      .status(200)
+      .json(new ApiResponse("Note updated successfully", note));
   } catch (error) {
     console.log("error updating note", error);
     return res.status(500).json({
@@ -110,10 +110,9 @@ export const deleteNote = async (req: Request, res: Response) => {
       });
     }
 
-    return res.status(200).json({
-      message: "Note deleted successfully",
-      deletedNote: note,
-    });
+    return res
+      .status(200)
+      .json(new ApiResponse("Note deleted successfully", note));
   } catch (error) {
     console.log("error deleting note", error);
     return res.status(500).json({
