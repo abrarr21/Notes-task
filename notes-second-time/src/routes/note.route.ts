@@ -52,4 +52,37 @@ notesRouter.get("/", async (req, res) => {
   });
 });
 
+// @route /api/notes/:id
+// @description Update description of the given note id
+// @access Public
+notesRouter.patch("/:id", async (req, res) => {
+  const { id } = req.params;
+  const { description } = req.body;
+
+  if (!description) {
+    return res.status(400).json({
+      message: "descrtiption is required",
+    });
+  }
+
+  if (description.trim().length < 10) {
+    return res.status(400).json({
+      message: "descrtiption must be at least 10 characters long",
+    });
+  }
+
+  const noteExist = await notesModel.findById(id);
+  if (!noteExist) {
+    return res.status(204).json({ message: "Note not found" });
+  }
+
+  noteExist.description = description;
+  noteExist.save();
+
+  return res.status(200).json({
+    message: "Note updated successfully",
+    updatedNote: noteExist,
+  });
+});
+
 export default notesRouter;
