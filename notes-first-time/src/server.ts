@@ -1,4 +1,7 @@
 import app from "./app.js";
+import connectDB from "./config/database.js";
+
+connectDB();
 
 app.get("/", (req, res) => {
   res.send("Server is running perfectly");
