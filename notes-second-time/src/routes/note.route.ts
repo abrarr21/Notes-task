@@ -40,4 +40,16 @@ notesRouter.post("/", async (req, res) => {
   });
 });
 
+// @route /api/notes
+// @description Return list of all notes
+// @access Public
+notesRouter.get("/", async (req, res) => {
+  const allNotes = await notesModel.find();
+
+  return res.status(200).json({
+    message: "Notes fetched successfully",
+    notes: allNotes,
+  });
+});
+
 export default notesRouter;
