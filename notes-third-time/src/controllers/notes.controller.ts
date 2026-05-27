@@ -28,21 +28,36 @@ export const createNote = async (req: Request, res: Response) => {
     });
   }
 
-  const newNote = await notesModel.create({ title, description });
+  try {
+    const newNote = await notesModel.create({ title, description });
 
-  return res.status(201).json({
-    message: "Note created successfully",
-    note: newNote,
-  });
+    return res.status(201).json({
+      message: "Note created successfully",
+      note: newNote,
+    });
+  } catch (error) {
+    console.log("error creating note", error);
+
+    return res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
 };
 
 export const getAllNotes = async (req: Request, res: Response) => {
-  const allNotes = await notesModel.find();
+  try {
+    const allNotes = await notesModel.find();
 
-  return res.status(200).json({
-    message: "Notes fetched successfully",
-    notes: allNotes,
-  });
+    return res.status(200).json({
+      message: "Notes fetched successfully",
+      notes: allNotes,
+    });
+  } catch (error) {
+    console.log("error fetching notes", error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
 };
 
 export const updateNote = async (req: Request, res: Response) => {
@@ -61,34 +76,48 @@ export const updateNote = async (req: Request, res: Response) => {
     });
   }
 
-  const note = await notesModel.findById(id);
-  if (!note) {
-    return res.status(204).json({
-      message: "Note not found",
+  try {
+    const note = await notesModel.findById(id);
+    if (!note) {
+      return res.status(204).json({
+        message: "Note not found",
+      });
+    }
+
+    note.description = description;
+    note.save();
+
+    return res.status(200).json({
+      message: "Note updated successfully",
+      note: note,
+    });
+  } catch (error) {
+    console.log("error updating note", error);
+    return res.status(500).json({
+      message: "internal server error",
     });
   }
-
-  note.description = description;
-  note.save();
-
-  return res.status(200).json({
-    message: "Note updated successfully",
-    note: note,
-  });
 };
 
 export const deleteNote = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const note = await notesModel.findByIdAndDelete(id);
-  if (!note) {
-    return res.status(204).json({
-      message: "Note not found",
+  try {
+    const note = await notesModel.findByIdAndDelete(id);
+    if (!note) {
+      return res.status(204).json({
+        message: "Note not found",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Note deleted successfully",
+      deletedNote: note,
+    });
+  } catch (error) {
+    console.log("error deleting note", error);
+    return res.status(500).json({
+      message: "internal server errror",
     });
   }
-
-  return res.status(200).json({
-    message: "Note deleted successfully",
-    deletedNote: note,
-  });
 };
