@@ -86,4 +86,20 @@ notesRouter.patch("/:id", async (req, res) => {
   });
 });
 
+notesRouter.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const note = await notesModel.findByIdAndDelete(id);
+  if (!note) {
+    return res.status(204).json({
+      message: "Note not found",
+    });
+  }
+
+  return res.status(200).json({
+    message: "Note deleted successfully",
+    deletedNote: note,
+  });
+});
+
 export default notesRouter;
