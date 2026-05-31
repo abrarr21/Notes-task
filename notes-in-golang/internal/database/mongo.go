@@ -20,14 +20,14 @@ type Database struct {
 func ConnectDB(cfg *config.DatabaseConfig) *Database {
 	c, err := mongo.Connect(options.Client().ApplyURI(cfg.MongoDB_URI))
 	if err != nil {
-		log.Fatalf("failed to connect to mongoDB %v", err)
+		log.Fatal("failed to connect to MongoDB: ", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := c.Ping(ctx, nil); err != nil {
-		log.Fatalf("failed to ping mongodb %v", err)
+		log.Fatal("failed to reach MongoDB, check if it is running: ", err)
 	}
 
 	log.Println("Conncted to MongoDB")
@@ -45,12 +45,12 @@ func ConnectDB(cfg *config.DatabaseConfig) *Database {
 }
 
 func (d *Database) Disconnect() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	if err := d.client.Disconnect(ctx); err != nil {
-		log.Printf("failed disconnecting mongodb %v", err)
+		log.Printf("failed disconnecting from MongoDB: %v", err)
 	}
 
-	log.Println("Disconnected to mongodb")
+	log.Println("Disconnected from MongoDB")
 }

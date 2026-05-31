@@ -30,21 +30,21 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		log.Println("Server started running on port", cfg.Server.Port)
+		log.Println("Server listening on port:", cfg.Server.Port)
 		if err := srv.ListenAndServe(); err != nil {
-			log.Printf("failed to start server %v", err)
+			log.Fatal("server failed to start:", err)
 		}
 	}()
 
 	sig := <-quit
-	log.Println("shutdown signal recieved:", sig)
+	log.Println("shutdown signal received:", sig)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("forced server shutdown %v", err)
+		log.Printf("graceful shutdown failed, forcing exit: %v", err)
 	}
 
-	log.Println("Server shutdown gracefully")
+	log.Println("Server stopped gracefully")
 }
