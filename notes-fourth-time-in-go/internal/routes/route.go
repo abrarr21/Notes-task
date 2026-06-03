@@ -17,6 +17,7 @@ func RegisterAllRoutes(db *database.Database, cfg *config.Config) *chi.Mux {
 	r.Get("/", h.CheckHealth)
 
 	UserRoutes(r, h)
+	NoteRoutes(r, h)
 
 	return r
 }

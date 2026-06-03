@@ -15,6 +15,7 @@ type Database struct {
 	client *mongo.Client
 	DB     *mongo.Database
 	Users  *mongo.Collection
+	Notes  *mongo.Collection
 }
 
 func ConnectDB(cfg *config.DatabaseConfig) *Database {
@@ -34,6 +35,7 @@ func ConnectDB(cfg *config.DatabaseConfig) *Database {
 
 	db := c.Database(cfg.DBName)
 	users := db.Collection("users")
+	notes := db.Collection("notes")
 
 	if err := models.EnsureIndexes(users); err != nil {
 		log.Fatal("failed to create indexes: ", err)
@@ -43,6 +45,7 @@ func ConnectDB(cfg *config.DatabaseConfig) *Database {
 		client: c,
 		DB:     db,
 		Users:  users,
+		Notes:  notes,
 	}
 }
 
