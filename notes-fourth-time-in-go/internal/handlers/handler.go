@@ -3,16 +3,19 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/abrarr21/notes-in-golang/internal/config"
 	"github.com/abrarr21/notes-in-golang/internal/database"
 )
 
 type Handler struct {
-	DB *database.Database
+	DB  *database.Database
+	Cfg *config.Config
 }
 
-func New(db *database.Database) *Handler {
+func New(db *database.Database, cfg *config.Config) *Handler {
 	return &Handler{
-		DB: db,
+		DB:  db,
+		Cfg: cfg,
 	}
 }
 

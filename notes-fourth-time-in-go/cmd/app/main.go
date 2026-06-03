@@ -19,7 +19,7 @@ func main() {
 	db := database.ConnectDB(&cfg.Database)
 	defer db.Disconnect()
 
-	router := routes.RegisterAllRoutes(db)
+	router := routes.RegisterAllRoutes(db, cfg)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.Server.Port,
@@ -32,7 +32,7 @@ func main() {
 	go func() {
 		log.Println("server listening on port: ", cfg.Server.Port)
 		if err := srv.ListenAndServe(); err != nil {
-			log.Fatal("failed to start server: ", err)
+			log.Println("failed to start server: ", err)
 		}
 	}()
 
