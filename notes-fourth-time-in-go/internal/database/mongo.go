@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/abrarr21/notes-in-golang/internal/config"
+	"github.com/abrarr21/notes-in-golang/internal/models"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -33,6 +34,10 @@ func ConnectDB(cfg *config.DatabaseConfig) *Database {
 
 	db := c.Database(cfg.DBName)
 	users := db.Collection("users")
+
+	if err := models.EnsureIndexes(users); err != nil {
+		log.Fatal("failed to create indexes: ", err)
+	}
 
 	return &Database{
 		client: c,
