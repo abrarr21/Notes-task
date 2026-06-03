@@ -10,21 +10,27 @@ import (
 )
 
 type User struct {
-	ID       bson.ObjectID `bson:"_id,omitempty" json:"id"`
-	Name     string        `bson:"name" json:"name" validate:"required,alpha"`
-	Email    string        `bson:"email" json:"email" validate:"required,email"`
-	Password string        `bson:"password" json:"password" validate:"required,min=4"`
+	ID       bson.ObjectID `bson:"_id,omitempty"`
+	Name     string        `bson:"name"`
+	Email    string        `bson:"email"`
+	Password string        `bson:"password"`
 }
 
-type UserRequest struct {
-	Email    string `bson:"email" json:"email" validate:"required,email"`
-	Password string `bson:"password" json:"password" validate:"required"`
+type RegisterUserRequest struct {
+	Name     string `json:"name" validate:"required"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=4"`
+}
+
+type LoginUserRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
 
 type UserResponse struct {
-	ID    bson.ObjectID `bson:"_id,omitempty" json:"id"`
-	Name  string        `bson:"name" json:"name"`
-	Email string        `bson:"email" json:"email"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 func EnsureIndexes(collection *mongo.Collection) error {
