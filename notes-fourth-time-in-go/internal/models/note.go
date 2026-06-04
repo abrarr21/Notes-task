@@ -32,5 +32,5 @@ type NoteResponse struct {
 
 type UpdateNoteRequest struct {
 	Title   *string `json:"title" validate:"omitempty,min=4,max=20"`
-	Content *string `json:"content" validate:"omitempty,min=10,max=25"`
+	Content *string `json:"content" validate:"omitempty,min=1,max=25"`
 }

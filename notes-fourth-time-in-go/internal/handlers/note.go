@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -10,7 +11,9 @@ import (
 
 	"github.com/abrarr21/notes-in-golang/internal/models"
 	"github.com/abrarr21/notes-in-golang/internal/utils"
+	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
@@ -36,7 +39,7 @@ func (h *Handler) GetAllNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response []models.NoteResponse
+	response := make([]models.NoteResponse, 0)
 
 	for _, note := range notes {
 		response = append(response, models.NoteResponse{
@@ -54,7 +57,7 @@ func (h *Handler) GetAllNotes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreaetNotes(w http.ResponseWriter, r *http.Request) {
-	var input models.Note
+	var input models.AddNoteRequest
 
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -64,7 +67,7 @@ func (h *Handler) CreaetNotes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := utils.Validate(input); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.ResponseJSON(w, http.StatusBadRequest, "validation failed", err)
 		return
 	}
 
@@ -101,5 +104,136 @@ func (h *Handler) CreaetNotes(w http.ResponseWriter, r *http.Request) {
 
 	if err := utils.ResponseJSON(w, http.StatusCreated, "note created successfully", response); err != nil {
 		log.Println("failed to encode respone")
+	}
+}
+
+func (h *Handler) UpdateNote(w http.ResponseWriter, r *http.Request) {
+	// parse note ID and check if its valid
+	id := chi.URLParam(r, "id")
+	noteID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		utils.ResponseJSON(w, http.StatusBadRequest, "invalid note id", nil)
+		return
+	}
+
+	var input models.UpdateNoteRequest
+
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.ResponseJSON(w, http.StatusBadRequest, "invalid input", nil)
+		return
+	}
+
+	if errors := utils.Validate(input); errors != nil {
+		utils.ResponseJSON(w, http.StatusBadRequest, "validation failed", errors)
+		return
+	}
+
+	// build MongoDB update document
+	update, err := buildUpdateDoc(input)
+	if err != nil {
+		utils.ResponseJSON(w, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	result, err := h.DB.Notes.UpdateOne(ctx, bson.M{"_id": noteID}, bson.M{"$set": update})
+	if err != nil {
+		log.Printf("failed to update note %s: %v", id, err)
+		http.Error(w, "failed to update note", http.StatusInternalServerError)
+		return
+	}
+
+	if result.MatchedCount == 0 {
+		utils.ResponseJSON(w, http.StatusNotFound, "note not found", nil)
+		return
+	}
+
+	// fetch and return the updated note
+	var note models.Note
+	if err := h.DB.Notes.FindOne(ctx, bson.M{"_id": noteID}).Decode(&note); err != nil {
+		log.Printf("failed to fetch updated note %s: %v", id, err)
+		http.Error(w, "failed to fetch udpated note", http.StatusInternalServerError)
+		return
+	}
+
+	response := models.NoteResponse{
+		ID:        note.ID.Hex(),
+		Title:     note.Title,
+		Content:   note.Content,
+		CreatedAt: note.CreatedAt,
+		UpdatedAt: note.UpdatedAt,
+	}
+
+	if err := utils.ResponseJSON(w, http.StatusOK, "note updated successfully", response); err != nil {
+		log.Printf("failed to encode response for note %s: %v", id, err)
+	}
+
+}
+
+func (h *Handler) GetNoteByID(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	noteID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		utils.ResponseJSON(w, http.StatusBadRequest, "invalid note id", nil)
+		return
+	}
+
+	var note models.Note
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	if err := h.DB.Notes.FindOne(ctx, bson.M{"_id": noteID}).Decode(&note); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			utils.ResponseJSON(w, http.StatusNotFound, "note not found", nil)
+			return
+		}
+		log.Printf("failed to fetch note %s: %v", id, err)
+		http.Error(w, "failed to fetch note", http.StatusInternalServerError)
+		return
+	}
+
+	response := models.NoteResponse{
+		ID:        note.ID.Hex(),
+		Title:     note.Title,
+		Content:   note.Content,
+		CreatedAt: note.CreatedAt,
+		UpdatedAt: note.UpdatedAt,
+	}
+
+	if err := utils.ResponseJSON(w, http.StatusOK, "note fetched successfully", response); err != nil {
+		log.Println("error encodring response")
+	}
+
+}
+
+func (h *Handler) DeleteNote(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	noteID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		utils.ResponseJSON(w, http.StatusBadRequest, "invalid note id", nil)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	res, err := h.DB.Notes.DeleteOne(ctx, bson.M{"_id": noteID})
+	if err != nil {
+		log.Printf("failed to delete note %s: %v", id, err)
+		utils.ResponseJSON(w, http.StatusInternalServerError, "failed to delete note", nil)
+		return
+	}
+
+	if res.DeletedCount == 0 {
+		utils.ResponseJSON(w, http.StatusNotFound, "note not found", nil)
+		return
+	}
+
+	if err := utils.ResponseJSON(w, http.StatusOK, "note deleted", nil); err != nil {
+		log.Println("error encoding response")
 	}
 }

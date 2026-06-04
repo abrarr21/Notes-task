@@ -28,7 +28,7 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := utils.Validate(input); err != nil {
 		log.Printf("failed to validate: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.ResponseJSON(w, http.StatusBadRequest, "validation failed", err)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := utils.Validate(input); err != nil {
 		log.Printf("failed to validate: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.ResponseJSON(w, http.StatusBadRequest, "validation failed", err)
 		return
 	}
 
