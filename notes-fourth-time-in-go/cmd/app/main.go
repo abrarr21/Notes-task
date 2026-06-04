@@ -11,6 +11,7 @@ import (
 
 	"github.com/abrarr21/notes-in-golang/internal/config"
 	"github.com/abrarr21/notes-in-golang/internal/database"
+	"github.com/abrarr21/notes-in-golang/internal/handlers"
 	"github.com/abrarr21/notes-in-golang/internal/routes"
 )
 
@@ -19,7 +20,9 @@ func main() {
 	db := database.ConnectDB(&cfg.Database)
 	defer db.Disconnect()
 
-	router := routes.RegisterAllRoutes(db, cfg)
+	h := handlers.New(db, cfg)
+
+	router := routes.RegisterAllRoutes(h)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.Server.Port,
