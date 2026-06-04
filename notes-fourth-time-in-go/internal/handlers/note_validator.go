@@ -43,3 +43,14 @@ func buildUpdateDoc(input models.UpdateNoteRequest) (bson.M, error) {
 	update["updated_at"] = time.Now().UTC()
 	return update, nil
 }
+
+// hasChanges returns true if at least one *string field differs from its stored value
+func hasChanges(fields map[*string]string) bool {
+	for ptr, existing := range fields {
+		if ptr != nil && strings.TrimSpace(*ptr) != existing {
+			return true
+		}
+	}
+
+	return false
+}

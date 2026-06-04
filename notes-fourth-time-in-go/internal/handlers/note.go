@@ -108,7 +108,6 @@ func (h *Handler) CreaetNotes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateNote(w http.ResponseWriter, r *http.Request) {
-	// parse note ID and check if its valid
 	id := chi.URLParam(r, "id")
 	noteID, err := bson.ObjectIDFromHex(id)
 	if err != nil {
@@ -117,27 +116,56 @@ func (h *Handler) UpdateNote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input models.UpdateNoteRequest
-
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		utils.ResponseJSON(w, http.StatusBadRequest, "invalid input", nil)
 		return
 	}
-
 	if errors := utils.Validate(input); errors != nil {
 		utils.ResponseJSON(w, http.StatusBadRequest, "validation failed", errors)
 		return
 	}
 
-	// build MongoDB update document
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	// fetch existing note
+	var existing models.Note
+	if err := h.DB.Notes.FindOne(ctx, bson.M{"_id": noteID}).Decode(&existing); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			utils.ResponseJSON(w, http.StatusNotFound, "note not found", nil)
+			return
+		}
+		log.Printf("failed to fetch note %s: %v", id, err)
+		http.Error(w, "failed to fetch note", http.StatusInternalServerError)
+		return
+	}
+
+	// reusable response builder
+	toResponse := func(n models.Note) models.NoteResponse {
+		return models.NoteResponse{
+			ID:        n.ID.Hex(),
+			Title:     n.Title,
+			Content:   n.Content,
+			CreatedAt: n.CreatedAt,
+			UpdatedAt: n.UpdatedAt,
+		}
+	}
+
+	// diff check — extend this map as fields grow
+	if !hasChanges(map[*string]string{
+		input.Title:   existing.Title,
+		input.Content: existing.Content,
+	}) {
+		utils.ResponseJSON(w, http.StatusOK, "no changes detected", toResponse(existing))
+		return
+	}
+
 	update, err := buildUpdateDoc(input)
 	if err != nil {
 		utils.ResponseJSON(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
 
 	result, err := h.DB.Notes.UpdateOne(ctx, bson.M{"_id": noteID}, bson.M{"$set": update})
 	if err != nil {
@@ -145,32 +173,22 @@ func (h *Handler) UpdateNote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to update note", http.StatusInternalServerError)
 		return
 	}
-
 	if result.MatchedCount == 0 {
 		utils.ResponseJSON(w, http.StatusNotFound, "note not found", nil)
 		return
 	}
 
 	// fetch and return the updated note
-	var note models.Note
-	if err := h.DB.Notes.FindOne(ctx, bson.M{"_id": noteID}).Decode(&note); err != nil {
+	var updated models.Note
+	if err := h.DB.Notes.FindOne(ctx, bson.M{"_id": noteID}).Decode(&updated); err != nil {
 		log.Printf("failed to fetch updated note %s: %v", id, err)
-		http.Error(w, "failed to fetch udpated note", http.StatusInternalServerError)
+		http.Error(w, "failed to fetch updated note", http.StatusInternalServerError)
 		return
 	}
 
-	response := models.NoteResponse{
-		ID:        note.ID.Hex(),
-		Title:     note.Title,
-		Content:   note.Content,
-		CreatedAt: note.CreatedAt,
-		UpdatedAt: note.UpdatedAt,
-	}
-
-	if err := utils.ResponseJSON(w, http.StatusOK, "note updated successfully", response); err != nil {
+	if err := utils.ResponseJSON(w, http.StatusOK, "note updated successfully", toResponse(updated)); err != nil {
 		log.Printf("failed to encode response for note %s: %v", id, err)
 	}
-
 }
 
 func (h *Handler) GetNoteByID(w http.ResponseWriter, r *http.Request) {
