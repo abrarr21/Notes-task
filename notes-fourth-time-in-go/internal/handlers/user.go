@@ -26,7 +26,7 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := utils.Validator.Struct(input); err != nil {
+	if err := utils.Validate(input); err != nil {
 		log.Printf("failed to validate: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -98,7 +98,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := utils.Validator.Struct(input); err != nil {
+	if err := utils.Validate(input); err != nil {
 		log.Printf("failed to validate: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

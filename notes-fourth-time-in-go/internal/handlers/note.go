@@ -63,7 +63,7 @@ func (h *Handler) CreaetNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := utils.Validator.Struct(input); err != nil {
+	if err := utils.Validate(input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
