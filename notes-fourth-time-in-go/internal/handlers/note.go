@@ -157,7 +157,8 @@ func (h *Handler) UpdateNote(w http.ResponseWriter, r *http.Request) {
 		input.Title:   existing.Title,
 		input.Content: existing.Content,
 	}) {
-		utils.ResponseJSON(w, http.StatusOK, "no changes detected", toResponse(existing))
+		// utils.ResponseJSON(w, http.StatusOK, "no changes detected", toResponse(existing))
+		utils.ResponseJSON(w, http.StatusOK, "no changes detected", nil)
 		return
 	}
 
