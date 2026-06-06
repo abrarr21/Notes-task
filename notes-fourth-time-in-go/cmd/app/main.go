@@ -17,8 +17,15 @@ import (
 
 func main() {
 	cfg := config.Load()
-	db := database.ConnectDB(&cfg.Database)
-	defer db.Disconnect()
+	db, err := database.ConnectDB(&cfg.Database)
+	if err != nil {
+		log.Fatalf("database connection failed: %v", err)
+	}
+	defer func() {
+		if err := db.Disconnect(); err != nil {
+			log.Println("warning: could not Disconnect cleanly: ", err)
+		}
+	}()
 
 	h := handlers.New(db, cfg)
 

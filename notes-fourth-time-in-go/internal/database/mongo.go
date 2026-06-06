@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -18,17 +19,20 @@ type Database struct {
 	Notes  *mongo.Collection
 }
 
-func ConnectDB(cfg *config.DatabaseConfig) *Database {
-	c, err := mongo.Connect(options.Client().ApplyURI(cfg.MongoDB_URI))
+func ConnectDB(cfg *config.DatabaseConfig) (*Database, error) {
+	// .SetServerSelectionTimeout() -> if MongoDB is unreachable, any query fails fast in 5 seconds instead of silently waiting 30 sec.
+	// .SetMaxConnIdleTime() -> reclaim idle connections
+	c, err := mongo.Connect(options.Client().ApplyURI(cfg.MongoDB_URI).SetServerSelectionTimeout(5 * time.Second).SetMaxConnIdleTime(1 * time.Minute))
 	if err != nil {
-		log.Fatalf("Failed to connect to MongoDB: %v", err)
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := c.Ping(ctx, nil); err != nil {
-		log.Fatal("failed to Ping MongoDB")
+		return nil, fmt.Errorf("failed to Ping MongoDB: %w", err)
+
 	}
 
 	log.Println("connected to MongoDB ✅")
@@ -38,7 +42,7 @@ func ConnectDB(cfg *config.DatabaseConfig) *Database {
 	notes := db.Collection("notes")
 
 	if err := models.EnsureIndexes(users); err != nil {
-		log.Fatal("failed to create indexes: ", err)
+		return nil, fmt.Errorf("failed to create indexes: %w", err)
 	}
 
 	return &Database{
@@ -46,16 +50,17 @@ func ConnectDB(cfg *config.DatabaseConfig) *Database {
 		DB:     db,
 		Users:  users,
 		Notes:  notes,
-	}
+	}, nil
 }
 
-func (d *Database) Disconnect() {
+func (d *Database) Disconnect() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := d.client.Disconnect(ctx); err != nil {
-		log.Println("failed to Disconnect from MongoDB")
+		return fmt.Errorf("failed to Disconnect from MongoDB: %w", err)
 	}
 
 	log.Println("Disconnected from MongoDB")
+	return nil
 }
